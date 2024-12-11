@@ -56,6 +56,10 @@ class DataFolder(Dataset):
             mask_path = '/'.join(sub_paths)
         elif self.dataset == 'cpm17':
             mask_path = f'{img_path[:-4].replace("Images", "Labels")}.mat'
+            img_path = f'{img_path[:-4]}.png'
+        elif self.dataset == 'puma_nuclei10':
+            mask_path = f'{img_path[:-4].replace("images", "labels")}.mat'
+            img_path = f'{img_path[:-4]}.tif'
         else:
             mask_path = f'{img_path[:-4].replace("Images", "Masks")}.npy'
 
@@ -156,6 +160,12 @@ def load_maskfile(mask_path: str):
     elif 'cpm17' in mask_path:
         inst_map = scipy.io.loadmat(mask_path)['inst_map']
         type_map = (inst_map.copy() > 0).astype(float)
+
+    elif 'puma' in mask_path:
+        # print(mask_path)
+        mask = scipy.io.loadmat(mask_path)
+        inst_map = mask["inst_map"].astype(np.int32)
+        type_map = mask["type_map"].astype(np.int32)
 
     else:
         inst_map = np.load(mask_path)

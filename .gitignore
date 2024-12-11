@@ -1,0 +1,14 @@
+*.out
+*.csv
+*.npy
+*.png
+*.txt
+__pycache__/
+checkpoint/
+data/
+datasets/
+
+wandb/
+segmentor/pretrained
+segmentor/checkpoint
+segmentor/output

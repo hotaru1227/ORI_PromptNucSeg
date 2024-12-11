@@ -52,18 +52,22 @@ class DataFolder(Dataset):
         index = index % len(self.data)
 
         img_path = self.img_paths[index]
-
         values = ([io.imread(f'../segmentor/{img_path}')[..., :3]] +
                   [np.array(point).reshape(-1, 2) for point in self.data[img_path]])
-
         if self.dataset == 'kumar':
             mask_path = f'{img_path[:-4].replace("images", "labels")}.npy'
             sub_paths = mask_path.split('/')
             sub_paths[-2] += '_ins'
             mask_path = '/'.join(sub_paths)
             mask = np.load(f'../segmentor/{mask_path}')
-        elif self.dataset == 'cpm17':
+        elif  'cpm17' in  self.dataset:
             mask = scipy.io.loadmat(f'../segmentor/{img_path[:-4].replace("Images", "Labels")}.mat')['inst_map']
+        elif self.dataset=='puma_nuclei10':
+            mask = scipy.io.loadmat(f'../segmentor/{img_path[:-4].replace("images", "labels")}.mat')['inst_map']
+            img_path = f'{img_path[:-4]}.tif'
+        if self.dataset == 'consep':
+            mask_path = f'{img_path[:-4].replace("Images", "Labels")}.npy'
+            mask = np.load(f'../segmentor/{mask_path}')[:, :, 0]
         else:
             mask = np.load(f'../segmentor/{img_path.replace("Images", "Masks")[:-4]}.npy', allow_pickle=True)[()][
                         'inst_map']

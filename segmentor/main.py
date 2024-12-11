@@ -20,8 +20,34 @@ from stats_utils import (
 )
 
 import argparse
+def get_random_color():
+    ''' generate rgb using a list comprehension '''
+    r, g, b = [random.random()*255 for i in range(3)]
+    return r, g, b
+def compare_and_color(pred_map, true_map):
+    # 创建一个空白的RGB图像
+    true_h, true_w = true_map.shape
+    if pred_map.shape != true_map.shape:
+        pred_map = pred_map[:true_h, :true_w]
+    h, w = pred_map.shape
+    result_img = np.zeros((h, w, 3), dtype=np.uint8)
 
+    # 判断像素值并赋予颜色
+    for i in range(h):
+        for j in range(w):
+            pred_val = pred_map[i, j]
+            true_val = true_map[i, j]
 
+            if pred_val == 0 and true_val == 0:
+                result_img[i, j] = [0, 0, 0]  # 黑色
+            elif pred_val > 0 and true_val == 0:
+                result_img[i, j] = [255, 0, 0]  # 红色
+            elif pred_val == 0 and true_val > 0:
+                result_img[i, j] = [0, 0, 255]  # 蓝色
+            elif pred_val > 0 and true_val > 0:
+                result_img[i, j] = [0, 255, 0]  # 绿色
+
+    return result_img
 def parse_args():
     parser = argparse.ArgumentParser('Cell segmentor')
 
@@ -33,15 +59,15 @@ def parse_args():
     parser.add_argument("--start-epoch", default=0, type=int, metavar="N", help="start epoch")
     parser.add_argument('--epochs', default=200, type=int)
     parser.add_argument("--print-freq", default=10, type=int, help="print frequency")
-    parser.add_argument("--start-eval", default=60, type=int)
+    parser.add_argument("--start_eval", default=2, type=int)
 
     parser.add_argument('--output_dir', default='', type=str)
     parser.add_argument('--seed', default=42, type=int)
 
     parser.add_argument('--tta', action='store_true')
 
-    parser.add_argument("--use-wandb", action='store_true')
-    parser.add_argument('--run-name', default=None, type=str, help='wandb run name')
+    parser.add_argument("--use_wandb", action='store_true')
+    parser.add_argument('--run_name', default=None, type=str, help='wandb run name')
     parser.add_argument('--group-name', default=None, type=str, help='wandb group name')
 
     parser.add_argument("--device", default="cuda", help="device to use for training / testing")
@@ -126,6 +152,7 @@ def main():
     )
 
     max_mPQ = 0
+    max_aji = 0
     metric_dict = {}
     if args.resume:
         # checkpoint = torch.load(
@@ -153,7 +180,7 @@ def main():
 
     if args.use_wandb and is_main_process():
         wandb.init(
-            project="Segmentor",
+            project="PUMA_nuclei10",
             name=args.run_name,
             group=args.group_name,
             config=vars(args)
@@ -195,18 +222,19 @@ def main():
         )
 
         try:
-            if epoch >= args.start_eval:
+            if epoch >= 0 and epoch % 10 == 0:
                 metric_dict = evaluate(
                     args,
                     model,
-                    val_dataloader,
+                    test_dataloader,
                     cfg.data.num_classes,
                     cfg.data.post.iou_threshold,
                     args.tta,
                     device
                 )
 
-                mPQ = metric_dict['mPQ']
+                mPQ = metric_dict['PQ']
+                aji = metric_dict['AJI']
                 if max_mPQ < mPQ:
                     max_mPQ = mPQ
                     save_on_master(
@@ -215,11 +243,23 @@ def main():
                             'epoch': epoch,
                             'metrics': metric_dict
                         },
-                        f"checkpoint/{args.output_dir}/best.pth",
+                        f"checkpoint/{args.output_dir}/bestpq.pth",
+                    )
+                mPQ = metric_dict['PQ']
+                if max_aji < aji:
+                    max_mPQ = aji
+                    save_on_master(
+                        {
+                            'model': model_without_ddp.state_dict(),
+                            'epoch': epoch,
+                            'metrics': metric_dict
+                        },
+                        f"checkpoint/{args.output_dir}/bestaji.pth",
                     )
 
                 wandb_log_info.update(metric_dict)
         except NameError:
+            print("???")
             pass
 
         if args.use_wandb and is_main_process():
@@ -540,7 +580,7 @@ def evaluate(
                     inds=inds[keep] if k == 0 else inds[keep].repeat(k + 1),
                     tta=tta
                 )
-
+                # print(images.shape)
                 for mask_data in masks:
                     all_scores.append(mask_data['predicted_iou'])
                     all_masks.append(mask_data['segmentation'][:ori_sizes[0, 0], :ori_sizes[0, 1]])
@@ -602,6 +642,8 @@ def evaluate(
 
             binary_pq_scores.append(bpq_tmp)
             aji_scores.append(aji_score)
+            output_filename = test_dataloader.dataset.files[file_inds].split(".")[0].split("/")[-1] 
+            # print(output_filename,aji_score)
 
             excel_info.append(
                 (test_dataloader.dataset.files[file_inds[0]].split("/")[-1],
@@ -611,6 +653,74 @@ def evaluate(
                  cell_nums[batch_inds[0]].item())
             )
 
+            # import cv2
+            # from PIL import Image
+            # _,_,_,ori_shape = images.shape
+            # overlay_img ="/data/hotaru/my_projects/sam-hq/data/cpm17/test/Overlay"+ "/"+output_filename+".png"
+            # Overlay_img = Image.open(overlay_img)
+            # Overlay_img_np = np.array(Overlay_img)
+            # # 这里处理一下所有output的输出，1024里面所有合法的都画，标明有多少合法，也标明gt
+            # valid_all_point_list = []
+            # valid_all_point_score = []
+            # # print(prompt_points.squeeze(1).shape)
+            # for i in range(prompt_points.squeeze(1).shape[0]):
+            #     x, y = prompt_points[i][0][0],prompt_points[i][0][1]
+            #     if 0 <= x < Overlay_img.height and 0 <= y < Overlay_img.width:
+            #         valid_all_point_list.append(prompt_points[i])  #存了所有合法的point
+            #         valid_all_point_score.append(prompt_points[i])
+
+
+            # pred_colored = np.zeros((ori_shape, ori_shape, 3))
+            # pred_labeled_cnum = b_inst_map.max() + 1
+            # for k in range(1, pred_labeled_cnum):
+            #     pred_colored[b_inst_map == k, :] = np.array(get_random_color())
+            # for point in prompt_points.squeeze(1):
+            #     x, y = point[0], point[1]
+            #     x, y = int(x), int(y)
+            #     cv2.circle(pred_colored, (x, y), radius=4, color=(255, 255, 255), thickness=-1)
+            # # pred_instance_colored = cv2.applyColorMap(pred_instance_map)
+            # output_dir = os.path.join("/data/hotaru/my_projects/ORI_PromptNucSeg/segmentor/outputs/orip/color")
+            # os.makedirs(output_dir, exist_ok=True)  # 确保目录存在
+            # filename1 = os.path.join(output_dir, output_filename + '.png')
+            # cv2.imwrite(filename1, pred_colored)
+
+
+            # '''彩点图'''
+            # for point in prompt_points.squeeze(1):
+            #     x, y = point[0], point[1]
+            #     x, y = int(x), int(y)
+            #     cv2.circle(Overlay_img_np, (x, y), radius=4, color=(255, 255, 255), thickness=-1)
+            # # if len(unmatched_points)!=0:
+            # #     for point, unmatch in zip(gt_points, unmatched_points): #这个unmatch是不是包括类别啊
+            # #         x, y = point
+            # #         x, y = int(x), int(y)
+            # #         if unmatch==False:
+            # #             cv2.circle(Overlay_img_np, (x, y), radius=5, color= (0, 100, 0), thickness=2)  # 绿色圆圈
+            # #         else:
+            # #             cv2.drawMarker(Overlay_img_np, (x, y), color=(139, 0, 0) , markerType=cv2.MARKER_TILTED_CROSS, markerSize=10, thickness=2)  # 红色叉号
+
+            # output_dir4 = os.path.join('/data/hotaru/my_projects/ORI_PromptNucSeg/segmentor/outputs/orip/point_overlay')
+            # os.makedirs(output_dir4, exist_ok=True)  # 确保目录存在
+            # filename4 = os.path.join(output_dir4, output_filename + '.png')
+            # cv2.imwrite(filename4, Overlay_img_np)
+
+
+            # inst_map_tensor = torch.from_numpy(inst_maps)
+            # bi_pred = np.where(b_inst_map > 0, 1, b_inst_map)  
+            # # bi_true = np.where(inst_map_tensor > 0, 1, inst_map_tensor)
+            # bi_true = np.where(np.any(inst_map_tensor.numpy() > 0, axis=0), 1, 0)
+            # color_compair_img = compare_and_color(bi_pred, bi_true) 
+            # for point in prompt_points.squeeze(1):
+            #     x, y = point[0], point[1]
+            #     x, y = int(x), int(y)
+            #     cv2.circle(color_compair_img, (x, y), radius=4, color=(255, 255, 255), thickness=-1)
+            # output_dir3 = os.path.join('/data/hotaru/my_projects/ORI_PromptNucSeg/segmentor/outputs/orip/compare')
+            # os.makedirs(output_dir3, exist_ok=True)  # 确保目录存在
+            # filename3 = os.path.join(output_dir3, output_filename + '.png')
+            # color_compair_img_rgb = cv2.cvtColor(color_compair_img, cv2.COLOR_BGR2RGB)
+            # # 以 RGB 格式保存图像
+            # cv2.imwrite(filename3, color_compair_img_rgb)
+            
     if 'pannuke' in test_dataloader.dataset.dataset:  # PanNuke
 
         tissue_mpq_scores = []

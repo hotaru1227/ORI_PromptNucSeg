@@ -14,8 +14,9 @@ from torch.utils.data.distributed import DistributedSampler
 def parse_args():
     parser = argparse.ArgumentParser('Cell prompter')
     parser.add_argument('--config', default='pannuke123.py', type=str)
-    parser.add_argument('--run-name', default=None, type=str, help='wandb run name')
+    parser.add_argument('--run_name', default=None, type=str, help='wandb run name')
     parser.add_argument('--group-name', default=None, type=str, help='wandb group name')
+    parser.add_argument('--pro_name', default=None, type=str, help='wandb group name')
 
     parser.add_argument(
         "--opts",
@@ -34,8 +35,8 @@ def parse_args():
     parser.add_argument("--start-epoch", default=0, type=int, metavar="N", help="start epoch")
     parser.add_argument("--device", default="cuda", help="device to use for training / testing")
     parser.add_argument("--print-freq", default=5, type=int, help="print frequency")
-    parser.add_argument("--use-wandb", action='store_true', help='use wandb for logging')
-    parser.add_argument('--epochs', default=200, type=int, help='number of epochs.')
+    parser.add_argument("--use_wandb", action='store_true', help='use wandb for logging')
+    parser.add_argument('--epochs', default=500, type=int, help='number of epochs.')
     parser.add_argument('--warmup_epochs', default=5, type=int, help='number of warmup epochs.')
     parser.add_argument('--clip-grad', type=float, default=0.1,
                         help='Clip gradient norm (default: 0.1)')
@@ -144,12 +145,17 @@ def main():
         lr=actual_lr,
         weight_decay=cfg.optimizer.weight_decay
     )
+    # scheduler = getattr(torch.optim.lr_scheduler, cfg.scheduler.type)(
+    #     optimizer,
+    #     milestones=cfg.scheduler.milestones,
+    #     gamma=cfg.scheduler.gamma,
+    # )
 
     scaler = torch.cuda.amp.Gradcaler() if args.amp else None
 
     if args.use_wandb and is_main_process():
         wandb.init(
-            project='Prompter',
+            project=args.pro_name,
             name=args.run_name,
             group=args.group_name,
             config=vars(args),
@@ -185,6 +191,7 @@ def main():
             model_ema,
             scaler
         )
+        # scheduler.step()
 
         if args.output_dir:
             checkpoint = {
@@ -206,37 +213,36 @@ def main():
                 f"checkpoint/{args.output_dir}/latest.pth",
             )
 
-        try:
-            if epoch >= args.start_eval:
-                metrics, metrics_string = evaluate(
-                    cfg,
-                    model_ema or model,
-                    val_dataloader,
-                    device,
-                    epoch,
-                )
+        
+        if epoch >= 0:
+            metrics, metrics_string = evaluate(
+                cfg,
+                model_ema or model,
+                test_dataloader,
+                device,
+                epoch,
+            )
 
-                log_info.update(dict(zip(["Det Pre", "Det Rec", "Det F1"], metrics['Det'])))
-                log_info.update(dict(zip(["Cls Pre", "Cls Rec", "Cls F1"], metrics['Cls'])))
-                log_info.update(dict(IoU=metrics['IoU']))
+            log_info.update(dict(zip(["Det Pre", "Det Rec", "Det F1"], metrics['Det'])))
+            log_info.update(dict(zip(["Cls Pre", "Cls Rec", "Cls F1"], metrics['Cls'])))
+            log_info.update(dict(IoU=metrics['IoU']))
 
-                cls_f1 = metrics['Cls'][-1]
-                if max_cls_f1 < cls_f1:
-                    max_cls_f1 = cls_f1
+            cls_f1 = metrics['Cls'][-1]
+            if max_cls_f1 < cls_f1:
+                max_cls_f1 = cls_f1
 
-                    checkpoint = {
-                        "model": model_without_ddp.state_dict() if not model_ema else model_ema.module.state_dict(),
-                        "metrics": metrics_string,
-                        "f1": max_cls_f1,
-                        "epoch": epoch,
-                    }
-                    if args.output_dir:
-                        save_on_master(
-                            checkpoint,
-                            f"checkpoint/{args.output_dir}/best.pth",
-                        )
-        except NameError:
-            pass
+                checkpoint = {
+                    "model": model_without_ddp.state_dict() if not model_ema else model_ema.module.state_dict(),
+                    "metrics": metrics_string,
+                    "f1": max_cls_f1,
+                    "epoch": epoch,
+                }
+                if args.output_dir:
+                    save_on_master(
+                        checkpoint,
+                        f"checkpoint/{args.output_dir}/best.pth",
+                    )
+        
 
         if is_main_process() and args.use_wandb:
             wandb.log(

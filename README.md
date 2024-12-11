@@ -2,7 +2,24 @@
 
 torch 2.0.1, mmcv, mmdet
 
+CUDA_VISIBLE_DEVICES=7  python main.py --config consep.py --output_dir consep/1210_consep_base   --use_wandb  --run_name 1210_consep_base --pro_name CheckP   > 1210_consep_base.txt &
 
+python predict_prompts.py --config cpm17.py --resume /data/hotaru/my_projects/ORI_PromptNucSeg/prompter/checkpoint/cpm17/1129_ori_32_500/best.pth
+
+CUDA_VISIBLE_DEVICES=2 python main.py --config puma_nuclei10.py --output_dir puma_nuclei10/1208_puma10_1024  --use_wandb  --run_name 1208_puma10_1024  > 1208_puma10_1024.txt &
+
+
+
+
+CUDA_VISIBLE_DEVICES=2 python predict_prompts.py --config puma_nuclei10.py --resume /data/hotaru/my_projects/ORI_PromptNucSeg/prompter/checkpoint/puma_nuclei10/1208_puma10_1024/best.pth
+
+
+
+CUDA_VISIBLE_DEVICES=1  python main.py --config cpm17_b.py --output_dir cpm17/1201_cropp_ori --use_wandb --run_name 1201_cropp_ori  
+
+CUDA_VISIBLE_DEVICES=2 nohup  python main.py --config puma_nuclei10_b.py --output_dir puma_nuclei10/1208_puma10_1024_seg  --use_wandb --run_name 1208_puma10_1024_seg > 1208_puma10_1024_seg.txt &
+
+CUDA_VISIBLE_DEVICES=2  python main.py --config puma_nuclei10_b.py  --eval  --resume  /data/hotaru/my_projects/ORI_PromptNucSeg/segmentor/checkpoint/puma_nuclei10/1208_puma10_1024_seg/bestaji.pth
 
 ## Dataset
 

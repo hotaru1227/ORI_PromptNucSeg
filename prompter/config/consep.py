@@ -8,21 +8,20 @@ prompter = dict(
     neck=dict(
         in_channels=[96, 192, 384, 768],
         out_channels=256,
-        num_outs=4,
+        num_outs=3,
         add_extra_convs='on_input',
     ),
     dropout=0.1,
-    space=16,
+    space=8,
     hidden_dim=256
 )
 
 data = dict(
-    name='cpm17',
-    num_classes=1,
-    batch_size_per_gpu=8,
+    name='consep',
+    num_classes=4,
+    batch_size_per_gpu=4,
     num_workers=8,
     train=dict(transform=[
-        dict(type='RandomCrop', height=256, width=256, p=1),  # 500 500
         dict(type='RandomGridShuffle', grid=(4, 4), p=0.5),
         dict(type='ColorJitter', brightness=0.25, contrast=0.25, saturation=0.1, hue=0.05, p=0.2),
         dict(type='RandomRotate90', p=0.5),
@@ -47,6 +46,7 @@ data = dict(
              pad_width_divisor=prompter["space"], position="top_left", p=1),
         dict(type='Normalize'),
     ]),
+    eval=dict(nms_thr=12, match_dis=12)
 )
 
 optimizer = dict(
@@ -54,18 +54,19 @@ optimizer = dict(
     lr=1e-4,
     weight_decay=1e-4
 )
+
 scheduler = dict(
     type='MultiStepLR',
-    milestones=[50,100,150],
-    gamma=0.3
+    milestones=[100],
+    gamma=0.1
 )
 
 criterion = dict(
     matcher=dict(type='HungarianMatcher', dis_type='l2', set_cost_point=0.1, set_cost_class=1),
-    eos_coef=0.25,
+    eos_coef=0.4,
     reg_loss_coef=5e-3,
     cls_loss_coef=1.0,
     mask_loss_coef=1.0
 )
 
-test = dict(nms_thr=12, match_dis=12, filtering=True)
+test = dict(nms_thr=12, match_dis=12, filtering=False)

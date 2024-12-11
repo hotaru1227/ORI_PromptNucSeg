@@ -119,7 +119,6 @@ def evaluate(
 
         images = images.to(device)
 
-
         pd_points, pd_scores, pd_classes, pd_masks = predict(
             model,
             images,
@@ -133,46 +132,6 @@ def evaluate(
             intersection = (pd_masks * masks).sum()
             union = (pd_masks.sum() + masks.sum() + 1e-7) - intersection
             iou_scores.append(intersection / (union + 1e-7))
-        # #这里改成处理256
-        # crop_boxes = crop_with_overlap(
-        #     images,
-        #     (256,256),(256,256),
-        #     int(64),
-        # ).tolist()
-
-        # #单张大图 point的结果列表
-        # all_points = []
-        # all_points_scores = []
-        # all_points_class = []
- 
-        
-
-        # for idx, crop_box in enumerate(crop_boxes):
-        #     x1, y1, x2, y2 = crop_box
-        #     crop_box_tuple = tuple(crop_box)
-        #     pd_points, pd_scores, pd_classes, pd_masks = predict(
-        #         model,
-        #         images[..., y1:y2, x1:x2].to(device),
-        #         ori_shape=np.array((y2 - y1, x2 - x1)),
-        #         filtering=cfg.test.filtering,
-        #         nms_thr=cfg.test.nms_thr,
-        #     )
-
-        #     pd_points[:, 0] += x1
-        #     pd_points[:, 1] += y1
-
-        #     all_points.append(pd_points)
-        #     all_points_scores.append(pd_scores)
-        #     all_points_class.append(pd_classes)
-
-        # all_points = np.vstack(all_points)
-        # all_points_scores = np.concatenate(all_points_scores)
-        # all_points_class = np.concatenate(all_points_class)
-        # pd_points = all_points
-        # prompt_points = torch.from_numpy(pd_points).unsqueeze(1)
-        # pd_scores = all_points_scores
-        # pd_classes = all_points_class
-
 
         gt_points = gt_points[0].reshape(-1, 2).numpy()
         labels = labels[0].numpy()
@@ -258,46 +217,3 @@ def evaluate(
     metrics = {'Det': [det_p, det_r, det_f1], 'Cls': [cls_p, cls_r, cls_f1],
                'IoU': (np.mean(iou_scores) * 100).round(2)}
     return metrics, table.get_string()
-
-
-
-def crop_with_overlap(
-        img,
-        split_width,
-        split_height,
-        overlap
-):
-    split_width = 256
-    split_height = 256
-    def start_points(
-            size,
-            split_size,
-            overlap
-    ):
-        points = [0]
-        counter = 1
-        stride = 256 - overlap
-        split_size = 256
-        while True:
-            pt = stride * counter
-            if pt + split_size >= size:
-                if split_size == size:
-                    break
-                points.append(size - split_size)
-                break
-            else:
-                points.append(pt)
-            counter += 1
-        return points
-
-    # print(img.shape)
-    _,_,img_h, img_w = img.shape
-
-    X_points = start_points(img_w, split_width, overlap)
-    Y_points = start_points(img_h, split_height, overlap)
-
-    crop_boxes = []
-    for y in Y_points:
-        for x in X_points:
-            crop_boxes.append([x, y, min(x + split_width, img_w), min(y + split_height, img_h)])
-    return np.asarray(crop_boxes)
