@@ -46,7 +46,7 @@ def process_files(files):
         filename, extension = os.path.splitext(file)
         
         # 定义新的扩展名
-        new_extension = '.tif'  # 修改为你想要的新扩展名
+        new_extension = '.png'  # 修改为你想要的新扩展名
         
         # 构造新的文件名
         new_file = filename + new_extension

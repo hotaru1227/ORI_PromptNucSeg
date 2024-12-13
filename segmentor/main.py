@@ -57,7 +57,7 @@ def parse_args():
     parser.add_argument("--overlap", default=64, type=int, help="overlapping pixels")
 
     parser.add_argument("--start-epoch", default=0, type=int, metavar="N", help="start epoch")
-    parser.add_argument('--epochs', default=200, type=int)
+    parser.add_argument('--epochs', default=500, type=int)
     parser.add_argument("--print-freq", default=10, type=int, help="print frequency")
     parser.add_argument("--start_eval", default=2, type=int)
 
@@ -68,6 +68,7 @@ def parse_args():
 
     parser.add_argument("--use_wandb", action='store_true')
     parser.add_argument('--run_name', default=None, type=str, help='wandb run name')
+    parser.add_argument('--pro_name', default=None, type=str, help='wandb run name')
     parser.add_argument('--group-name', default=None, type=str, help='wandb group name')
 
     parser.add_argument("--device", default="cuda", help="device to use for training / testing")
@@ -180,7 +181,7 @@ def main():
 
     if args.use_wandb and is_main_process():
         wandb.init(
-            project="PUMA_nuclei10",
+            project=args.pro_name,
             name=args.run_name,
             group=args.group_name,
             config=vars(args)

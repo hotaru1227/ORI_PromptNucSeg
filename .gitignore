@@ -12,3 +12,5 @@ wandb/
 segmentor/pretrained
 segmentor/checkpoint
 segmentor/output
+
+tmp/

@@ -1,5 +1,8 @@
 import wandb
 import argparse
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
+
 
 from utils import *
 from mmengine.config import Config

@@ -60,6 +60,9 @@ class DataFolder(Dataset):
         elif self.dataset == 'puma_nuclei10':
             mask_path = f'{img_path[:-4].replace("images", "labels")}.mat'
             img_path = f'{img_path[:-4]}.tif'
+        elif self.dataset == 'consep':
+            mask_path = f'{img_path[:-4].replace("Images", "Labels")}.npy'
+            img_path = f'{img_path[:-4]}.png'
         else:
             mask_path = f'{img_path[:-4].replace("Images", "Masks")}.npy'
 
@@ -166,7 +169,18 @@ def load_maskfile(mask_path: str):
         mask = scipy.io.loadmat(mask_path)
         inst_map = mask["inst_map"].astype(np.int32)
         type_map = mask["type_map"].astype(np.int32)
-
+    elif 'consep' in mask_path:
+        mask = np.load(mask_path, allow_pickle=True)
+        inst_map = mask[:, :, 0]
+        type_map = mask[:, :, 1]
+        for x in range(type_map.shape[0]):
+            for y in range(type_map.shape[1]):
+                class_id = type_map[x, y]
+                if class_id == 3 or class_id == 4:
+                    type_map[x, y] = 3
+                elif class_id in [5, 6, 7]:
+                    type_map[x, y] = 4
+        
     else:
         inst_map = np.load(mask_path)
         type_map = (inst_map.copy() > 0).astype(float)

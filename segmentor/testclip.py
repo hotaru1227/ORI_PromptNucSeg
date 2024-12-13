@@ -1,7 +1,11 @@
 
 import torch
 import PIL.Image
+import sys
+sys.path.append('/data/hotaru/projects/ORI_PromptNucSeg/CLIP') 
 import clip
+import os
+import cv2
 from typing import List
 from functools import lru_cache
 import matplotlib.pyplot as plt
@@ -12,127 +16,170 @@ device = torch.device("cuda:7" if torch.cuda.is_available() else "cpu")
 # 移除缓存，避免影响后续调用
 # @lru_cache
 
-def load_clip(name: str = "ViT-L/14@336px"):
+def load_clip(name: str = "ViT-B/16"):   # RN50x64   ViT-L/14@336px   ViT-B/32
     model, preprocess = clip.load(name, device=device)
     return model.to(device), preprocess
 
 @torch.no_grad()
 def get_score(crop: PIL.Image.Image, texts: List[str], model, preprocess) -> torch.Tensor:
     preprocessed = preprocess(crop).unsqueeze(0).to(device)
-    print(preprocessed.shape)
+    # print(preprocessed.shape)
     tokens = clip.tokenize(texts).to(device)
-    logits_per_image, _ = model(preprocessed, tokens)
+    # logits_per_image, _ = model(preprocessed, tokens)
 
     with torch.no_grad():
         image_features = model.encode_image(preprocessed)
         text_features = model.encode_text(tokens)
     
-    print(image_features.shape)
-    print(text_features.shape)
+
+    x_tokens = image_features[:, 1:, :]
+    h, w = 14, 14  # 假设是 14x14 patches
+    x_2d = x_tokens.view(1, h, w, 512)  # 变换为 [1, 14, 14, 512]
+    print("reshaped", x_2d.shape)
+    patch_features_2d = x_2d.permute(0, 3, 1, 2)  # 转为 [1, 768, 14, 14]
+    print("patch_features_2d", patch_features_2d.shape)
+    import torch.nn.functional as F
+    pixel_features = F.interpolate(patch_features_2d, size=(224, 224), mode="bilinear", align_corners=False)
+    print("pixel_features", pixel_features.shape)
+    print("text_features",text_features.shape)
+
+
+    output_dir = "/data/hotaru/projects/ORI_PromptNucSeg/tmp_short"
+    os.makedirs(output_dir, exist_ok=True)
+
+    aggregated_map = pixel_features[0].mean(dim=0).detach().cpu().numpy()  # 聚合所有通道
+    print("aggregated_map", aggregated_map.shape)
+    aggregated_map = aggregated_map.astype(np.float32)
+
+    normalized_aggregated = cv2.normalize(aggregated_map, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    print("normalized_aggregated", normalized_aggregated.shape)
+    cv2.imwrite(os.path.join(output_dir, "aggregated_feature_map.png"), normalized_aggregated)
+
+    colored_aggregated = cv2.applyColorMap(normalized_aggregated, cv2.COLORMAP_JET)
+    cv2.imwrite(os.path.join(output_dir, "aggregated_feature_map_colored.png"), colored_aggregated)
+
+    print(f"Visualizations saved in {output_dir}")
+
+    h, w = pixel_features.shape[2:]  # 获取 h 和 w
+    # 转换 pixel_features 为 [224*224, 512]
+    pixel_features = pixel_features.permute(0, 2, 3, 1).reshape(-1, 512)  # [224*224, 512]
+
+    # 对 pixel_features 和 text_features 进行 L2 normalization
+    pixel_features_norm = F.normalize(pixel_features, p=2, dim=1)  # [224*224, 512]
+    text_features_norm = F.normalize(text_features, p=2, dim=1)  # [1, 512]
+
+    # 计算 S 矩阵
+    S = torch.mm(pixel_features_norm, text_features_norm.T)  # [224*224, 1]
+
+    print("S",S.shape)  # 检查 S 的形状
     
+    # 将 S 还原为 h*w
+    S_reshaped = S.view(h, w)  # [224, 224]
+    print("S_reshaped",S_reshaped.shape)  # 检查 S 的形状
+
+    # 对 S_reshaped 进行 min-max normalization
+    P = (S_reshaped - S_reshaped.min()) / (S_reshaped.max() - S_reshaped.min())  # [224, 224]
+    print("P",P.shape) 
+
+    # 转换为 NumPy 数组
+    P_numpy = P.cpu().numpy()
+
+    # 将归一化矩阵值映射到 [0, 255] 范围，用于保存为图像
+    P_image = (P_numpy * 255).astype(np.uint8)
+    P_colored = cv2.applyColorMap(P_image, cv2.COLORMAP_JET)
+
+    # 保存图片
+    cv2.imwrite(os.path.join(output_dir, "P_visualized_long.png"), P_colored)
+
+    print("图片已保存为 P_visualized_long.png")
 
 
-    similarity_map = 1
-
-    # 生成热图来表示对齐结果
-    # plt.imshow(similarity_map, cmap='hot', aspect='auto')
-    # plt.colorbar(label="Similarity")
-    # plt.title("Text-Image Alignment")
-    # plt.savefig("/data/hotaru/my_projects/ORI_PromptNucSeg/segmentor/tmp/similarity_features.png", bbox_inches="tight")
-    # plt.close()
-
-
-    
-    # 查看 logits_per_image 的值，确保它们有合理的范围
-    print(f"logits_per_image: {logits_per_image}")
-    
-    similarity = logits_per_image.softmax(-1).cpu()
-    print(f"Similarity (after softmax): {similarity}")
-    return similarity[0, 0].item()
-
-@torch.no_grad()
-def get_score1(
-    image: PIL.Image.Image, 
-    text: str, 
-    model, 
-    preprocess, 
-    crop_size: int, 
-    save_path: str
-):
-    """
-    对输入图像进行裁剪，计算所有裁剪区域与文本的相似度得分，并保存热图。
-
-    Args:
-        image (PIL.Image.Image): 输入图像。
-        text (str): 待比较的文本。
-        model: CLIP 模型。
-        preprocess: CLIP 的预处理函数。
-        crop_size (int): 裁剪区域的大小。
-        save_path (str): 热图保存路径。
-    """
-    img_width, img_height = image.size
-
-    # 保存所有裁剪的图像
-    crops = []
-    crop_coords = []  # 记录每个裁剪的 (x, y) 坐标
-    for y in range(0, img_height, crop_size):
-        for x in range(0, img_width, crop_size):
-            crop = image.crop((x, y, min(x + crop_size, img_width), min(y + crop_size, img_height)))
-            crops.append(preprocess(crop).unsqueeze(0))
-            crop_coords.append((x, y))
-
-    # 拼接所有裁剪的图像到一个 tensor
-    input_tensor = torch.cat(crops, dim=0).to(device)
-    tokens = clip.tokenize([text] * input_tensor.size(0)).to(device)
-
-    # 使用模型预测 logits
-    logits_per_image, _ = model(input_tensor, tokens)
-
-    # 计算 softmax 归一化得分
-    similarities = logits_per_image.softmax(dim=0).cpu().numpy()
-
-    # 构建空的二维网格
-    grid_height = (img_height + crop_size - 1) // crop_size  # 向上取整
-    grid_width = (img_width + crop_size - 1) // crop_size    # 向上取整
-    scores = np.zeros((grid_height, grid_width))
-
-    # 将分数填充到网格中
-    for i, (x, y) in enumerate(crop_coords):
-        grid_y = y // crop_size
-        grid_x = x // crop_size
-        scores[grid_y, grid_x] = similarities[i, 0]
-
-    # 可视化相似度热图
-    plt.figure(figsize=(10, 8))
-    plt.imshow(scores, cmap="viridis", extent=(0, img_width, img_height, 0))
-    plt.colorbar(label="Similarity Score")
-    plt.title(f"Heatmap of Text-Image Similarity ({text})")
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.savefig(save_path, bbox_inches="tight")
-    plt.close()
 
 
 # 主程序
 if __name__ == "__main__":
     model, preprocess = load_clip()
 
-    image_path = "/data/hotaru/my_projects/ORI_PromptNucSeg/segmentor/datasets/cpm17_256/test/Images/image_00.png"
+    image_path = "/data/hotaru/projects/ORI_PromptNucSeg/segmentor/datasets/pannuke/Images/1_0.png"
 
-    texts = ["nuclei","dog"]
-    save_path = "/data/hotaru/my_projects/ORI_PromptNucSeg/segmentor/tmp/similarity_heatmap_4.png"
+    texts = "nuclei"
+    # texts = "Nuclei with irregular, polygonal, or elliptical shapes and uneven chromatin distribution, exhibiting staining regions with varying intensities in a patchy pattern."
+    save_path = "/data/hotaru/projects/ORI_PromptNucSeg/tmp/R.jpg"
 
     # 打开图像
     image = PIL.Image.open(image_path).convert("RGB")
 
-    # # 计算裁剪相似度并保存热图
-    # crop_size = 4 # 较小的裁剪尺寸
-    # get_score1(image, text, model, preprocess, crop_size, save_path)
-    # print(f"Heatmap saved to {save_path}")
-
-
-    # texts = ["dogs","nuclei"]
-    # image = PIL.Image.open(image_path).convert("RGB")
     
     score = get_score(image, texts, model, preprocess)
-    # print(f"Global similarity score: {score}")
+    # print(f"Global similarity score: {score}")\
+
+
+    '''huggingface的clip'''
+    # patch feature：torch.Size([1, 196, 768])
+    # text feature： torch.Size([1, 8, 512])
+
+    # from transformers import CLIPProcessor, CLIPVisionModel
+    # from transformers import CLIPTextModel, CLIPTokenizer
+
+    # # 加载 CLIP 的视觉模型
+    # model = CLIPVisionModel.from_pretrained("openai/clip-vit-base-patch16")
+    # processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch16")
+    # model_name = "openai/clip-vit-base-patch16"
+    # tokenizer = CLIPTokenizer.from_pretrained(model_name)
+    # text_model = CLIPTextModel.from_pretrained(model_name)
+    # # 输入图像预处理
+    # inputs = processor(images=image, return_tensors="pt")
+    # outputs = model(**inputs)
+
+    # # 提取 patch 特征
+    # patch_features = outputs.last_hidden_state[:, 1:, :]  # 跳过 CLS token
+    # print("222,",patch_features.shape)
+    # num_patches = int(patch_features.shape[1] ** 0.5)  # Patch 格子数
+    # patch_features_2d = patch_features.view(-1, num_patches, num_patches, 768)
+
+    # print("333",patch_features_2d.shape)
+    # patch_features_2d = patch_features_2d.permute(0, 3, 1, 2)  # 转为 [1, 768, 14, 14]
+    # import torch.nn.functional as F
+    # pixel_features = F.interpolate(patch_features_2d, size=(224, 224), mode="bilinear", align_corners=False)
+    # print(pixel_features.shape)  # [1, 768, 224, 224]
+
+
+    # texts = ["Cells in pathological tissue."]
+
+    # # Tokenize input
+    # inputs = tokenizer(texts, return_tensors="pt", padding=True)
+
+    # # Get text features
+    # text_features = text_model(**inputs).last_hidden_state
+    # print("Text Features Shape:", text_features.shape)
+
+    # import os
+    # import cv2
+    # # 创建保存目录
+    # output_dir = "/data/hotaru/projects/ORI_PromptNucSeg/tmp"
+    # os.makedirs(output_dir, exist_ok=True)
+
+    # # # 选择一个通道进行可视化（如第一个通道）
+    # # channel_idx = 0
+    # # feature_map = pixel_features[0, channel_idx, :, :].detach().cpu().numpy()  # 转为 NumPy 格式
+    # # # 归一化到 [0, 255]
+    # # normalized_map = cv2.normalize(feature_map, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    # # # 保存为灰度图
+    # # cv2.imwrite(os.path.join(output_dir, f"feature_channel_{channel_idx}.png"), normalized_map)
+    # # # 可视化伪彩色图
+    # # colored_map = cv2.applyColorMap(normalized_map, cv2.COLORMAP_JET)
+    # # cv2.imwrite(os.path.join(output_dir, f"feature_channel_{channel_idx}_colored.png"), colored_map)
+
+    # # 或者将所有通道平均聚合后保存
+    # aggregated_map = pixel_features[0].mean(dim=0).detach().cpu().numpy()  # 聚合所有通道
+    # normalized_aggregated = cv2.normalize(aggregated_map, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    # cv2.imwrite(os.path.join(output_dir, "aggregated_feature_map.png"), normalized_aggregated)
+
+    # colored_aggregated = cv2.applyColorMap(normalized_aggregated, cv2.COLORMAP_JET)
+    # cv2.imwrite(os.path.join(output_dir, "aggregated_feature_map_colored.png"), colored_aggregated)
+
+    # print(f"Visualizations saved in {output_dir}")
+
+
+
+

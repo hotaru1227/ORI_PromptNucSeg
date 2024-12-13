@@ -104,11 +104,11 @@ def _build_sam(
     sam.eval()
 
     if cfg.segmentor.type.endswith("B"):
-        ckpt = 'pretrained/sam_vit_b_01ec64.pth'
+        ckpt = '/data/hotaru/projects/PNS-one2/prompter/pretrained/sam_vit_b_01ec64.pth'
     elif cfg.segmentor.type.endswith("L"):
-        ckpt = 'pretrained/sam_vit_l_0b3195.pth'
+        ckpt = '/data/hotaru/projects/PNS-one2/prompter/pretrained/sam_vit_l_0b3195.pth'
     elif cfg.segmentor.type.endswith("H"):
-        ckpt = 'pretrained/sam_vit_h_4b8939.pth'
+        ckpt = '/data/hotaru/projects/PNS-one2/prompter/pretrained/sam_vit_h_4b8939.pth'
     else:
         raise NotImplementedError(f"Unknown model type: {cfg.segmentor.type}")
 
