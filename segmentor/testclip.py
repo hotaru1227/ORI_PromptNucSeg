@@ -9,6 +9,7 @@ import cv2
 from typing import List
 from functools import lru_cache
 import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
 import numpy as np
 
 device = torch.device("cuda:7" if torch.cuda.is_available() else "cpu")
@@ -36,7 +37,7 @@ def get_score(crop: PIL.Image.Image, texts: List[str], model, preprocess) -> tor
     h, w = 14, 14  # 假设是 14x14 patches
     x_2d = x_tokens.view(1, h, w, 512)  # 变换为 [1, 14, 14, 512]
     print("reshaped", x_2d.shape)
-    patch_features_2d = x_2d.permute(0, 3, 1, 2)  # 转为 [1, 768, 14, 14]
+    patch_features_2d = x_2d.permute(0, 3, 1, 2)  # 转为 [1, 512, 14, 14]
     print("patch_features_2d", patch_features_2d.shape)
     import torch.nn.functional as F
     pixel_features = F.interpolate(patch_features_2d, size=(224, 224), mode="bilinear", align_corners=False)
@@ -44,57 +45,69 @@ def get_score(crop: PIL.Image.Image, texts: List[str], model, preprocess) -> tor
     print("text_features",text_features.shape)
 
 
-    output_dir = "/data/hotaru/projects/ORI_PromptNucSeg/tmp_short"
+    output_dir = "/data/hotaru/projects/ORI_PromptNucSeg/tmp_nuclear"
     os.makedirs(output_dir, exist_ok=True)
 
     aggregated_map = pixel_features[0].mean(dim=0).detach().cpu().numpy()  # 聚合所有通道
     print("aggregated_map", aggregated_map.shape)
     aggregated_map = aggregated_map.astype(np.float32)
 
-    normalized_aggregated = cv2.normalize(aggregated_map, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-    print("normalized_aggregated", normalized_aggregated.shape)
-    cv2.imwrite(os.path.join(output_dir, "aggregated_feature_map.png"), normalized_aggregated)
+    '''可视化聚合的image特征aggregated_map'''
+    # 归一化 aggregated_map 到 [0, 1] 范围
+    normalized_aggregated = Normalize(vmin=aggregated_map.min(), vmax=aggregated_map.max())(aggregated_map)
 
-    colored_aggregated = cv2.applyColorMap(normalized_aggregated, cv2.COLORMAP_JET)
-    cv2.imwrite(os.path.join(output_dir, "aggregated_feature_map_colored.png"), colored_aggregated)
+    # 使用 matplotlib 的 jet 颜色映射
+    cmap = plt.get_cmap("jet")
+    colored_aggregated = cmap(normalized_aggregated)  # Shape: (H, W, 4), 包括 RGBA
 
+    # 保存彩色图像
+    output_path = os.path.join(output_dir, "aggregated_feature_map_colored.png")
+    plt.imsave(output_path, colored_aggregated[..., :3])  # 仅保存 RGB 通道
+
+    # 可视化并保存
+    plt.figure(figsize=(8, 8))
+    plt.imshow(colored_aggregated, interpolation="nearest")
+    plt.axis("off")
+    plt.title("Aggregated Feature Map (Colored)")
+    plt.savefig(os.path.join(output_dir, "aggregated_feature_map_visualization.png"), bbox_inches="tight")
     print(f"Visualizations saved in {output_dir}")
+    '''1'''
 
-    h, w = pixel_features.shape[2:]  # 获取 h 和 w
-    # 转换 pixel_features 为 [224*224, 512]
-    pixel_features = pixel_features.permute(0, 2, 3, 1).reshape(-1, 512)  # [224*224, 512]
 
-    # 对 pixel_features 和 text_features 进行 L2 normalization
+    h, w = patch_features_2d.shape[2:] 
+    pixel_features = patch_features_2d.permute(0, 2, 3, 1).reshape(-1, 512)  # [224*224, 512]
+
     pixel_features_norm = F.normalize(pixel_features, p=2, dim=1)  # [224*224, 512]
     text_features_norm = F.normalize(text_features, p=2, dim=1)  # [1, 512]
 
-    # 计算 S 矩阵
     S = torch.mm(pixel_features_norm, text_features_norm.T)  # [224*224, 1]
-
-    print("S",S.shape)  # 检查 S 的形状
     
-    # 将 S 还原为 h*w
     S_reshaped = S.view(h, w)  # [224, 224]
-    print("S_reshaped",S_reshaped.shape)  # 检查 S 的形状
 
     # 对 S_reshaped 进行 min-max normalization
     P = (S_reshaped - S_reshaped.min()) / (S_reshaped.max() - S_reshaped.min())  # [224, 224]
-    print("P",P.shape) 
 
-    # 转换为 NumPy 数组
     P_numpy = P.cpu().numpy()
+    P_tensor = torch.from_numpy(P_numpy).float().unsqueeze(0).unsqueeze(0)
+    P_numpy = F.interpolate(P_tensor, size=(224, 224), mode="bilinear", align_corners=False)
 
-    # 将归一化矩阵值映射到 [0, 255] 范围，用于保存为图像
-    P_image = (P_numpy * 255).astype(np.uint8)
-    P_colored = cv2.applyColorMap(P_image, cv2.COLORMAP_JET)
+    '''可视化P_numpy'''
+    P_numpy = P_numpy.squeeze().detach().cpu().numpy()  # 去掉 batch 维度并转换为 NumPy 格式
 
-    # 保存图片
-    cv2.imwrite(os.path.join(output_dir, "P_visualized_long.png"), P_colored)
+    # 标准化到 [0, 1] 范围
+    P_normalized = (P_numpy - P_numpy.min()) / (P_numpy.max() - P_numpy.min())
+    output_path = os.path.join(output_dir, "p.png")
+    plt.imsave(output_path, P_normalized, cmap="jet")  # 仅保存 RGB 通道
+    # 可视化并保存
+    plt.figure(figsize=(8, 8))
+    plt.imshow(P_normalized, cmap="jet", interpolation="nearest")
+    plt.axis("off")
+    plt.title("Visualization of P_numpy")
+    os.makedirs(output_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_dir, "P_numpy_visualization.png"), bbox_inches="tight", pad_inches=0)
 
-    print("图片已保存为 P_visualized_long.png")
-
-
-
+    print(f"Visualization saved at {os.path.join(output_dir, 'P_numpy_visualization.png')}")
+    '''1'''
 
 # 主程序
 if __name__ == "__main__":
@@ -102,7 +115,7 @@ if __name__ == "__main__":
 
     image_path = "/data/hotaru/projects/ORI_PromptNucSeg/segmentor/datasets/pannuke/Images/1_0.png"
 
-    texts = "nuclei"
+    texts = "nuclear"
     # texts = "Nuclei with irregular, polygonal, or elliptical shapes and uneven chromatin distribution, exhibiting staining regions with varying intensities in a patchy pattern."
     save_path = "/data/hotaru/projects/ORI_PromptNucSeg/tmp/R.jpg"
 
