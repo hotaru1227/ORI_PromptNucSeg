@@ -7,11 +7,11 @@ segmentor = dict(
 
 input_shape = segmentor['img_size']
 data = dict(
-    name='cpm17',
-    num_classes=1,
-    num_mask_per_img=25,
-    batch_size_per_gpu=2,#16
-    num_workers=8,
+    name='puma_nuclei3',
+    num_classes=3,
+    num_mask_per_img=20,
+    batch_size_per_gpu=32,
+    num_workers=0,
     num_neg_prompt=1,
     train=dict(transform=[
         dict(type='RandomCrop', height=256, width=256, p=1),
@@ -29,7 +29,7 @@ data = dict(
              width=input_shape,
              p=0.1),
         dict(type='ElasticTransform', p=0.2, sigma=25, alpha=0.5, alpha_affine=15),
-        dict(type='Normalize')
+        dict(type='Normalize'),
     ]),
     val=dict(transform=[
         dict(type='Normalize'),
@@ -48,8 +48,8 @@ optimizer = dict(
 
 scheduler = dict(
     type='MultiStepLR',
-    milestones=[50,100,150],
-    gamma=0.3
+    milestones=[100],
+    gamma=0.1
 )
 
 criterion = dict(

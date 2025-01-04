@@ -90,8 +90,8 @@ class DataFolder(Dataset):
         unique_pids = np.unique(inst_map)[1:]  # remove zero
 
         cell_num = len(unique_pids)
-
-        if cell_num:
+        # print("11111",cell_num)
+        if cell_num!=0:
             all_points = []
             cell_types = []
 
@@ -145,6 +145,7 @@ class DataFolder(Dataset):
                     k=self.num_neg_prompt
                 )
         else:
+            # print("??")
             prompt_points = torch.empty(0, (self.num_neg_prompt + 1), 2)
             prompt_labels = torch.empty(0, (self.num_neg_prompt + 1))
             all_points = torch.empty(0, 2)

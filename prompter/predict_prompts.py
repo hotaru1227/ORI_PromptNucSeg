@@ -20,6 +20,9 @@ model = build_model(cfg)
 # ckpt = torch.load(f'checkpoint/{args.resume}/best.pth', map_location='cpu')
 ckpt = torch.load(f'{args.resume}', map_location='cpu')
 pretrained_state_dict = ckpt['model']
+epoch = ckpt['epoch']
+print("*"*20)
+print(epoch)
 
 model.load_state_dict(pretrained_state_dict)
 model.eval()

@@ -62,7 +62,7 @@ class DataFolder(Dataset):
             mask = np.load(f'../segmentor/{mask_path}')
         elif  'cpm17' in  self.dataset:
             mask = scipy.io.loadmat(f'../segmentor/{img_path[:-4].replace("Images", "Labels")}.mat')['inst_map']
-        elif self.dataset=='puma_nuclei10':
+        elif self.dataset=='puma_nuclei10' or self.dataset=='puma_nuclei3':
             mask = scipy.io.loadmat(f'../segmentor/{img_path[:-4].replace("images", "labels")}.mat')['inst_map']
             img_path = f'{img_path[:-4]}.tif'
         if self.dataset == 'consep':

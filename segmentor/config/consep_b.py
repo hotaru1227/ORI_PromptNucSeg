@@ -1,5 +1,5 @@
 segmentor = dict(
-    type='PromptNucSeg-B',
+    type='PromptNucSeg-H',
     img_size=256,
     patch_size=16,
     multimask=False
@@ -10,7 +10,7 @@ data = dict(
     name='consep',
     num_classes=4,
     num_mask_per_img=20,
-    batch_size_per_gpu=32,
+    batch_size_per_gpu=8,
     num_workers=0,
     num_neg_prompt=1,
     train=dict(transform=[
@@ -48,8 +48,8 @@ optimizer = dict(
 
 scheduler = dict(
     type='MultiStepLR',
-    milestones=[100],
-    gamma=0.1
+    milestones=[80,150,300],
+    gamma=0.5
 )
 
 criterion = dict(

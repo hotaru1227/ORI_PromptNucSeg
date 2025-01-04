@@ -13,7 +13,7 @@ CUDA_VISIBLE_DEVICES=7 nohup python main.py --config pannuke321.py --output_dir 
 
 
 
-python predict_prompts.py --config consep.py --resume /data/hotaru/projects/ORI_PromptNucSeg/prompter/checkpoint/1210_consep_base/best.pth
+CUDA_VISIBLE_DEVICES=6 python predict_prompts.py --config consep.py --resume /data/hotaru/projects/ORI_PromptNucSeg/prompter/checkpoint/1210_consep_base/best.pth
 
 CUDA_VISIBLE_DEVICES=2 python main.py --config puma_nuclei10.py --output_dir puma_nuclei10/1208_puma10_1024  --use_wandb  --run_name 1208_puma10_1024  > 1208_puma10_1024.txt &
 
@@ -24,7 +24,10 @@ CUDA_VISIBLE_DEVICES=2 python predict_prompts.py --config puma_nuclei10.py --res
 
 
  
-CUDA_VISIBLE_DEVICES=1 nohup  python main.py --config consep_b.py --output_dir consep/1211_consep_base_seg  --use_wandb --run_name 1211_consep_base_seg  --pro_name CheckP  > 1211_consep_base_seg.txt &
+CUDA_VISIBLE_DEVICES=6   python main.py --config cpm17_b.py --output_dir consep/del  --use_wandb --run_name 1211_consep_base_seg  --pro_name CheckP  > 1211_consep_base_seg.txt &
+
+
+CUDA_VISIBLE_DEVICES=6 nohup  python main.py --config consep_b.py --output_dir consep/0104_consep_h  --use_wandb --pro_name CheckP --run_name 0104_consep_h > 0104_consep_h.txt &
 
 CUDA_VISIBLE_DEVICES=2 nohup  python main.py --config puma_nuclei10_b.py --output_dir puma_nuclei10/1208_puma10_1024_seg  --use_wandb --run_name 1208_puma10_1024_seg > 1208_puma10_1024_seg.txt &
 
