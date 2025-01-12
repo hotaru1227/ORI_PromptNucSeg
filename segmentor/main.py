@@ -223,42 +223,71 @@ def main():
         )
 
         try:
-            if epoch >= 0 and epoch % 10 == 0:
-                metric_dict = evaluate(
-                    args,
-                    model,
-                    test_dataloader,
-                    cfg.data.num_classes,
-                    cfg.data.post.iou_threshold,
-                    args.tta,
-                    device
-                )
-
-                mPQ = metric_dict['PQ']
-                aji = metric_dict['AJI']
-                if max_mPQ < mPQ:
-                    max_mPQ = mPQ
-                    save_on_master(
-                        {
-                            'model': model_without_ddp.state_dict(),
-                            'epoch': epoch,
-                            'metrics': metric_dict
-                        },
-                        f"checkpoint/{args.output_dir}/bestpq.pth",
-                    )
-                mPQ = metric_dict['PQ']
-                if max_aji < aji:
-                    max_mPQ = aji
-                    save_on_master(
-                        {
-                            'model': model_without_ddp.state_dict(),
-                            'epoch': epoch,
-                            'metrics': metric_dict
-                        },
-                        f"checkpoint/{args.output_dir}/bestaji.pth",
+            
+            if 'pannuke' not in  test_dataloader.dataset.dataset:
+                if epoch >= 0 and epoch % 10 == 0:
+                    metric_dict = evaluate(
+                        args,
+                        model,
+                        test_dataloader,
+                        cfg.data.num_classes,
+                        cfg.data.post.iou_threshold,
+                        args.tta,
+                        device
                     )
 
-                wandb_log_info.update(metric_dict)
+                    mPQ = metric_dict['PQ']
+                    aji = metric_dict['AJI']
+                    if max_mPQ < mPQ:
+                        max_mPQ = mPQ
+                        save_on_master(
+                            {
+                                'model': model_without_ddp.state_dict(),
+                                'epoch': epoch,
+                                'metrics': metric_dict
+                            },
+                            f"checkpoint/{args.output_dir}/bestpq.pth",
+                        )
+                    mPQ = metric_dict['PQ']
+                    if max_aji < aji:
+                        max_mPQ = aji
+                        save_on_master(
+                            {
+                                'model': model_without_ddp.state_dict(),
+                                'epoch': epoch,
+                                'metrics': metric_dict
+                            },
+                            f"checkpoint/{args.output_dir}/bestaji.pth",
+                        )
+
+                    wandb_log_info.update(metric_dict)
+                    
+            else:
+                if epoch >= 0 and epoch % 10 == 0:
+                    metric_dict = evaluate(
+                            args,
+                            model,
+                            test_dataloader,
+                            cfg.data.num_classes,
+                            cfg.data.post.iou_threshold,
+                            args.tta,
+                            device
+                        )
+                    # print(metric_dict)
+                    mPQ = metric_dict['mPQ']
+                    if max_mPQ < mPQ:
+                        max_mPQ = mPQ
+                        save_on_master(
+                            {
+                                'model': model_without_ddp.state_dict(),
+                                'epoch': epoch,
+                                'metrics': metric_dict
+                            },
+                            f"checkpoint/{args.output_dir}/bestpq.pth",
+                        )
+                    mPQ = metric_dict['mPQ']
+                    wandb_log_info.update(metric_dict)
+
         except NameError:
             print("???")
             pass

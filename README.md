@@ -5,11 +5,11 @@ torch 2.0.1, mmcv, mmdet
 CUDA_VISIBLE_DEVICES=7  python main.py --config consep.py --output_dir consep/del   --use_wandb  --run_name 1210_consep_base --pro_name CheckP   > 1210_consep_base.txt &
 
 
-CUDA_VISIBLE_DEVICES=7 nohup python main.py --config pannuke123.py --output_dir pannuke123/1213_pannuke123_base    --use_wandb  --run_name 1213_pannuke123_base --pro_name CheckP   > 1213_pannuke123_base.txt &
+CUDA_VISIBLE_DEVICES=6 nohup python main.py --config pannuke123.py --output_dir pannuke123/0109_pannuke123_base    --use_wandb  --run_name 0109_pannuke123_base --pro_name pannuke   > 0109_pannuke123_base.txt &
 
-CUDA_VISIBLE_DEVICES=7 nohup python main.py --config pannuke213.py --output_dir pannuke213/1213_pannuke213_base    --use_wandb  --run_name 1213_pannuke213_base --pro_name CheckP   > 1213_pannuke213_base.txt &
+CUDA_VISIBLE_DEVICES=6 nohup python main.py --config pannuke213.py --output_dir pannuke213/0109_pannuke213_base    --use_wandb  --run_name 0109_pannuke213_base --pro_name pannuke   > 0109_pannuke213_base.txt &
 
-CUDA_VISIBLE_DEVICES=7 nohup python main.py --config pannuke321.py --output_dir pannuke321/1213_pannuke321_base    --use_wandb  --run_name 1213_pannuke321_base --pro_name CheckP   > 1213_pannuke321_base.txt &
+CUDA_VISIBLE_DEVICES=7 nohup python main.py --config pannuke321.py --output_dir pannuke321/0109_pannuke321_base    --use_wandb  --run_name 0109_pannuke321_base --pro_name pannuke   > 0109_pannuke321_base.txt &
 
 
 
@@ -23,9 +23,22 @@ CUDA_VISIBLE_DEVICES=2 python main.py --config puma_nuclei10.py --output_dir pum
 CUDA_VISIBLE_DEVICES=2 python predict_prompts.py --config puma_nuclei10.py --resume /data/hotaru/my_projects/ORI_PromptNucSeg/prompter/checkpoint/puma_nuclei10/1208_puma10_1024/best.pth
 
 
- 
-CUDA_VISIBLE_DEVICES=6   python main.py --config cpm17_b.py --output_dir consep/del  --use_wandb --run_name 1211_consep_base_seg  --pro_name CheckP  > 1211_consep_base_seg.txt &
 
+CUDA_VISIBLE_DEVICES=2 python predict_prompts.py --config pannuke123.py --resume /data/hotaru/projects/ORI_PromptNucSeg/prompter/checkpoint/pannuke123/0109_pannuke123_base/best.pth
+CUDA_VISIBLE_DEVICES=2 python predict_prompts.py --config pannuke213.py --resume /data/hotaru/projects/ORI_PromptNucSeg/prompter/checkpoint/pannuke213/0109_pannuke213_base/best.pth
+CUDA_VISIBLE_DEVICES=2 python predict_prompts.py --config pannuke213.py --resume /data/hotaru/projects/ORI_PromptNucSeg/prompter/checkpoint/pannuke321/0109_pannuke321_base/best.pth
+
+ 
+CUDA_VISIBLE_DEVICES=6 nohup  python main.py --config cpm17_b.py --output_dir cpm/0109_cpm_batch8_5ef5_lossc  --use_wandb --run_name 0109_cpm_batch8_5ef5_lossc  --pro_name PNS-M  > 0109_cpm_batch8_5ef5_lossc.txt &
+
+
+
+CUDA_VISIBLE_DEVICES=5 nohup   python main.py --config pannuke321_h.py --output_dir pannuke/0110_pannuke321_seg_h  --use_wandb --run_name 0110_pannuke321_seg_h --pro_name pannuke  > 0110_pannuke321_seg_h.txt &
+
+CUDA_VISIBLE_DEVICES=6  nohup  python main.py --config pannuke213_h.py --output_dir pannuke/0110_pannuke213_seg_h  --use_wandb --run_name 0110_pannuke213_seg_h --pro_name pannuke  > 0110_pannuke213_seg_h.txt &
+
+
+CUDA_VISIBLE_DEVICES=6   python main.py --config consep_b.py --output_dir consep/del  --use_wandb --run_name 1211_consep_base_seg  --pro_name CheckP  > 1211_consep_base_seg.txt &
 
 CUDA_VISIBLE_DEVICES=6 nohup  python main.py --config consep_b.py --output_dir consep/0104_consep_h  --use_wandb --pro_name CheckP --run_name 0104_consep_h > 0104_consep_h.txt &
 

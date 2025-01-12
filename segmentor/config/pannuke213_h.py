@@ -10,11 +10,11 @@ data = dict(
     name='pannuke213',
     num_classes=5,
     num_mask_per_img=20,
-    batch_size_per_gpu=16,
+    batch_size_per_gpu=8,
     num_workers=0,
     num_neg_prompt=0,
     train=dict(transform=[
-        dict(type='RandomCrop', height=256, width=256, p=1),
+        # dict(type='RandomCrop', height=256, width=256, p=1),
         dict(type='RandomRotate90', p=0.5),
         dict(type='HorizontalFlip', p=0.5),
         dict(type='VerticalFlip', p=0.5),

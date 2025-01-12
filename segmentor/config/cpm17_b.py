@@ -10,7 +10,7 @@ data = dict(
     name='cpm17',
     num_classes=1,
     num_mask_per_img=25,
-    batch_size_per_gpu=2,#16
+    batch_size_per_gpu=8,#16
     num_workers=8,
     num_neg_prompt=1,
     train=dict(transform=[
@@ -42,7 +42,7 @@ data = dict(
 
 optimizer = dict(
     type='Adam',
-    lr=1e-4,
+    lr=5e-5,
     weight_decay=1e-4
 )
 
@@ -53,7 +53,7 @@ scheduler = dict(
 )
 
 criterion = dict(
-    loss_focal=20,
-    loss_dice=1,
+    loss_focal=1,
+    loss_dice=20,
     loss_iou=1
 )
