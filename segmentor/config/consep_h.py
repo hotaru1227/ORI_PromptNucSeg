@@ -1,6 +1,6 @@
 segmentor = dict(
     type='PromptNucSeg-H',
-    img_size=256,
+    img_size=512,
     patch_size=16,
     multimask=False
 )
@@ -10,11 +10,11 @@ data = dict(
     name='consep',
     num_classes=4,
     num_mask_per_img=20,
-    batch_size_per_gpu=8,
+    batch_size_per_gpu=2,
     num_workers=0,
     num_neg_prompt=1,
     train=dict(transform=[
-        dict(type='RandomCrop', height=256, width=256, p=1),
+        dict(type='RandomCrop', height=512, width=512, p=1),
         dict(type='RandomRotate90', p=0.5),
         dict(type='HorizontalFlip', p=0.5),
         dict(type='VerticalFlip', p=0.5),

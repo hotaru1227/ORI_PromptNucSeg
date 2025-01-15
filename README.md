@@ -24,9 +24,9 @@ CUDA_VISIBLE_DEVICES=2 python predict_prompts.py --config puma_nuclei10.py --res
 
 
 
-CUDA_VISIBLE_DEVICES=2 python predict_prompts.py --config pannuke123.py --resume /data/hotaru/projects/ORI_PromptNucSeg/prompter/checkpoint/pannuke123/0109_pannuke123_base/best.pth
-CUDA_VISIBLE_DEVICES=2 python predict_prompts.py --config pannuke213.py --resume /data/hotaru/projects/ORI_PromptNucSeg/prompter/checkpoint/pannuke213/0109_pannuke213_base/best.pth
-CUDA_VISIBLE_DEVICES=2 python predict_prompts.py --config pannuke213.py --resume /data/hotaru/projects/ORI_PromptNucSeg/prompter/checkpoint/pannuke321/0109_pannuke321_base/best.pth
+CUDA_VISIBLE_DEVICES=2 python predict_prompts.py --config pannuke123.py --resume /data/hotaru/projects/ORI_PromptNucSeg/prompter/checkpoint/dpa_pannuke123.pth
+CUDA_VISIBLE_DEVICES=2 python predict_prompts.py --config pannuke213.py --resume /data/hotaru/projects/ORI_PromptNucSeg/prompter/checkpoint/dpa_pannuke213.pth
+CUDA_VISIBLE_DEVICES=2 python predict_prompts.py --config pannuke321.py --resume /data/hotaru/projects/ORI_PromptNucSeg/prompter/checkpoint/dpa_pannuke321.pth
 
  
 CUDA_VISIBLE_DEVICES=6 nohup  python main.py --config cpm17_b.py --output_dir cpm/0109_cpm_batch8_5ef5_lossc  --use_wandb --run_name 0109_cpm_batch8_5ef5_lossc  --pro_name PNS-M  > 0109_cpm_batch8_5ef5_lossc.txt &
@@ -35,16 +35,26 @@ CUDA_VISIBLE_DEVICES=6 nohup  python main.py --config cpm17_b.py --output_dir cp
 
 CUDA_VISIBLE_DEVICES=5 nohup   python main.py --config pannuke321_h.py --output_dir pannuke/0110_pannuke321_seg_h  --use_wandb --run_name 0110_pannuke321_seg_h --pro_name pannuke  > 0110_pannuke321_seg_h.txt &
 
-CUDA_VISIBLE_DEVICES=6  nohup  python main.py --config pannuke213_h.py --output_dir pannuke/0110_pannuke213_seg_h  --use_wandb --run_name 0110_pannuke213_seg_h --pro_name pannuke  > 0110_pannuke213_seg_h.txt &
+CUDA_VISIBLE_DEVICES=6  nohup  python main.py --config pannuke213_h.py --output_dir pannuke/0113_pannuke213_seg_h  --use_wandb --run_name 0113_pannuke213_seg_h --pro_name pannuke  > 0113_pannuke213_seg_h.txt &
 
 
-CUDA_VISIBLE_DEVICES=6   python main.py --config consep_b.py --output_dir consep/del  --use_wandb --run_name 1211_consep_base_seg  --pro_name CheckP  > 1211_consep_base_seg.txt &
+CUDA_VISIBLE_DEVICES=3  nohup  python main.py --config consep_h.py --output_dir consep/0112_consep_seg_ori_h_512  --use_wandb --run_name 0112_consep_seg_ori_h_512  --pro_name CheckP  > 0112_consep_seg_ori_h_512.txt &
 
 CUDA_VISIBLE_DEVICES=6 nohup  python main.py --config consep_b.py --output_dir consep/0104_consep_h  --use_wandb --pro_name CheckP --run_name 0104_consep_h > 0104_consep_h.txt &
 
 CUDA_VISIBLE_DEVICES=2 nohup  python main.py --config puma_nuclei10_b.py --output_dir puma_nuclei10/1208_puma10_1024_seg  --use_wandb --run_name 1208_puma10_1024_seg > 1208_puma10_1024_seg.txt &
 
 CUDA_VISIBLE_DEVICES=2  python main.py --config puma_nuclei10_b.py  --eval  --resume  /data/hotaru/my_projects/ORI_PromptNucSeg/segmentor/checkpoint/puma_nuclei10/1208_puma10_1024_seg/bestaji.pth
+
+
+
+CUDA_VISIBLE_DEVICES=2  python main.py --config pannuke321_h.py  --eval  --resume  /data/hotaru/projects/ORI_PromptNucSeg/segmentor/checkpoint/pannuke/pannuke321_h.pth
+
+
+
+
+
+
 
 ## Dataset
 
